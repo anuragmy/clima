@@ -1,6 +1,7 @@
 package com.londonappbrewery.climapm;
 
 import android.Manifest;
+import android.content.AsyncQueryHandler;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.location.Location;
@@ -13,7 +14,17 @@ import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.TabHost;
 import android.widget.TextView;
+import android.widget.Toast;
+
+import com.loopj.android.http.AsyncHttpClient;
+import com.loopj.android.http.JsonHttpResponseHandler;
+import com.loopj.android.http.RequestParams;
+
+import org.json.JSONObject;
+
+import cz.msebera.android.httpclient.Header;
 
 
 public class WeatherController extends AppCompatActivity {
@@ -22,7 +33,7 @@ public class WeatherController extends AppCompatActivity {
     final  int REQUEST_CODE = 123;
     final String WEATHER_URL = "http://api.openweathermap.org/data/2.5/weather";
     // App ID to use OpenWeather data
-    final String APP_ID = "e72____PLEASE_REPLACE_ME_____13";
+    final String APP_ID = "f3ee5fe1cf606ac03130adcab8231af5";
     // Time between location updates (5000 milliseconds or 5 seconds)
     final long MIN_TIME = 5000;
     // Distance between location updates (1000m or 1km)
@@ -60,14 +71,14 @@ public class WeatherController extends AppCompatActivity {
     }
 
 
-    // TODO: Add onResume() here:
-    @Override
-    protected void onResume() {
-        super.onResume();
-        Log.d("Clime", "onREsume() called");
-        Log.d("Clime", "getting weather for current location");
-        getWeatherForCurrentLocation();
-    }
+        // TODO: Add onResume() here:
+        @Override
+        protected void onResume() {
+            super.onResume();
+            Log.d("Clime", "onREsume() called");
+            Log.d("Clime", "getting weather for current location");
+            getWeatherForCurrentLocation();
+        }
 
 
     // TODO: Add getWeatherForNewCity(String city) here:
@@ -84,6 +95,13 @@ public class WeatherController extends AppCompatActivity {
                 String latitude = String.valueOf(location.getLatitude());
                 Log.d("clima","latitude is " + latitude);
                 Log.d("clima","longitude is " + longitude);
+
+                //requesting data
+                RequestParams params = new RequestParams();
+                params.put("lat",latitude);
+                params.put("lon",longitude);
+                params.put("appid",APP_ID);
+                letsDoSomeNetworking(params);
             }
 
             @Override
@@ -111,7 +129,7 @@ public class WeatherController extends AppCompatActivity {
             //                                          int[] grantResults)
             // to handle the case where the user grants the permission. See the documentation
             // for ActivityCompat#requestPermissions for more details.
-            ActivityCompat.requestPermissions(this, new String[] {Manifest.permission.ACCESS_FINE_LOCATION},REQUEST_CODE);
+            ActivityCompat.requestPermissions(this, new String[] {Manifest.permission.ACCESS_COARSE_LOCATION},REQUEST_CODE);
             return;
         }
         mlocationManager.requestLocationUpdates(LOCATION_PROVIDER, MIN_TIME, MIN_DISTANCE, mLocationListener);
@@ -133,9 +151,32 @@ public class WeatherController extends AppCompatActivity {
     }
 // TODO: Add letsDoSomeNetworking(RequestParams params) here:
 
+    private void letsDoSomeNetworking(RequestParams params) {
+        AsyncHttpClient client = new AsyncHttpClient();
+        client.get(WEATHER_URL,params, new JsonHttpResponseHandler() {
+            @Override
+            public void onSuccess(int statusCode, Header[] headers, JSONObject response) {
+                Log.d("clima","success" + response.toString());
+                //Toast.makeText(WeatherController.this, response.toString(), Toast.LENGTH_SHORT).show();
+                WeatherDataModel weatherData = WeatherDataModel.fromJson(response);
+                updateUI(weatherData);
+            }
 
+            @Override
+            public void onFailure(int statusCode, Header[] headers, Throwable e,JSONObject response) {
+                Log.e("clima",e.toString());
+                Toast.makeText(WeatherController.this, "request Failed", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
 
     // TODO: Add updateUI() here:
+    private void updateUI(WeatherDataModel weather) {
+        mTemperatureLabel.setText(weather.getmTemp());
+        mCityLabel.setText(weather.getmCity());
+        int resourseID = getResources().getIdentifier(weather.getmIconName(),"drawable",getPackageName());
+        mWeatherImage.setImageResource(resourseID);
+    }
 
 
 
